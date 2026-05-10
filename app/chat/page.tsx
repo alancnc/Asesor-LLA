@@ -8,5 +8,20 @@ export default async function ChatPage() {
 
   if (!user) redirect("/login");
 
-  return <ChatApp userEmail={user.email ?? ""} />;
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("jurisdiction, response_style, language")
+    .eq("id", user.id)
+    .single();
+
+  return (
+    <ChatApp
+      userEmail={user.email ?? ""}
+      userProfile={{
+        jurisdiction: profile?.jurisdiction ?? "Argentina",
+        response_style: profile?.response_style ?? "balanced",
+        language: profile?.language ?? "es",
+      }}
+    />
+  );
 }

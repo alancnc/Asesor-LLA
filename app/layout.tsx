@@ -1,8 +1,6 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({ subsets: ["latin"] });
+import { ToastProvider } from "@/components/ui/Toast";
 
 export const metadata: Metadata = {
   title: "Asesor LLA — Asesor Jurídico & Político",
@@ -20,10 +18,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className="h-full">
-      <body
-        className={`${inter.className} h-full min-h-screen`}
-        style={{ background: "#000000", color: "#ffffff" }}
-      >
+      <body className="h-full min-h-screen">
+        <ToastProvider />
         {children}
       </body>
     </html>
