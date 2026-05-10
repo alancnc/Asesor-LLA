@@ -9,6 +9,8 @@ interface ChatInputProps {
   isLoading: boolean;
 }
 
+const spinKeyframes = `@keyframes spin { to { transform: rotate(360deg); } }`;
+
 export default function ChatInput({
   value,
   onChange,
@@ -25,6 +27,18 @@ export default function ChatInput({
     }
   }, [value]);
 
+  useEffect(() => {
+    if (typeof document !== "undefined") {
+      const id = "spin-keyframes";
+      if (!document.getElementById(id)) {
+        const style = document.createElement("style");
+        style.id = id;
+        style.textContent = spinKeyframes;
+        document.head.appendChild(style);
+      }
+    }
+  }, []);
+
   const handleKey = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -39,9 +53,7 @@ export default function ChatInput({
         background: "#0a0a0a",
         border: "1px solid",
         borderColor: value ? "rgba(124, 58, 237, 0.5)" : "#1a1a1a",
-        boxShadow: value
-          ? "0 0 20px rgba(124, 58, 237, 0.08)"
-          : "none",
+        boxShadow: value ? "0 0 20px rgba(124, 58, 237, 0.08)" : "none",
       }}
     >
       <textarea
@@ -53,11 +65,7 @@ export default function ChatInput({
         rows={1}
         disabled={isLoading}
         className="flex-1 resize-none bg-transparent text-sm outline-none placeholder-gray-600"
-        style={{
-          color: "#ffffff",
-          maxHeight: "160px",
-          lineHeight: "1.5",
-        }}
+        style={{ color: "#ffffff", maxHeight: "160px", lineHeight: "1.5" }}
       />
       <button
         onClick={onSubmit}
@@ -77,7 +85,7 @@ export default function ChatInput({
       >
         {isLoading ? (
           <div
-            className="w-3.5 h-3.5 rounded-full border-2 border-t-transparent"
+            className="w-3.5 h-3.5 rounded-full border-2"
             style={{
               borderColor: "#444",
               borderTopColor: "transparent",
@@ -100,12 +108,6 @@ export default function ChatInput({
           </svg>
         )}
       </button>
-
-      <style jsx>{`
-        @keyframes spin {
-          to { transform: rotate(360deg); }
-        }
-      `}</style>
     </div>
   );
 }
