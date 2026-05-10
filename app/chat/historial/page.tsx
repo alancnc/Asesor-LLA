@@ -169,7 +169,10 @@ export default function HistorialPage() {
                   background: "var(--surface-3)",
                   border: "1px solid rgba(255,255,255,0.05)",
                 }}
-                onClick={() => router.push("/chat")}
+                onClick={() => {
+                  localStorage.setItem("__loadConvId", c.id);
+                  router.push("/chat");
+                }}
               >
                 <div
                   className="flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center"

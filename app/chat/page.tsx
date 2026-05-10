@@ -18,7 +18,7 @@ export default async function ChatPage() {
     <ChatApp
       userEmail={user.email ?? ""}
       userProfile={{
-        jurisdiction: profile?.jurisdiction ?? "Argentina",
+        jurisdiction: profile?.jurisdiction ?? "Provincia de Misiones",
         response_style: profile?.response_style ?? "balanced",
         language: profile?.language ?? "es",
       }}

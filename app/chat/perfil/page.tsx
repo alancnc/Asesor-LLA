@@ -1,14 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
-import Badge from "@/components/ui/Badge";
 import Avatar from "@/components/ui/Avatar";
 import { useToast } from "@/components/ui/Toast";
-import { createClient } from "@/lib/supabase/client";
-import Modal from "@/components/ui/Modal";
-import { useRouter } from "next/navigation";
 
 interface Profile {
   id?: string;
@@ -21,24 +17,18 @@ interface Profile {
   language?: string;
   jurisdiction?: string;
   response_style?: string;
-  email_notifications?: boolean;
 }
 
-const PROFESSIONS = [
-  "Abogado",
-  "Estudiante de Derecho",
-  "Empresario",
-  "Particular",
-  "Otro",
-];
+const PROFESSIONS = ["Abogado", "Legislador", "Asesor Legislativo", "Estudiante de Derecho", "Otro"];
 
 const JURISDICTIONS = [
-  "Argentina",
-  "México",
-  "España",
-  "Colombia",
-  "Chile",
-  "Uruguay",
+  "Provincia de Misiones",
+  "Nación Argentina",
+  "Provincia de Buenos Aires",
+  "Provincia de Córdoba",
+  "Provincia de Santa Fe",
+  "Provincia de Corrientes",
+  "Otra provincia",
 ];
 
 const LANGUAGES = [
@@ -64,18 +54,43 @@ const selectStyle: React.CSSProperties = {
   outline: "none",
 };
 
+async function resizeImageToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = reject;
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = reject;
+      img.onload = () => {
+        const canvas = document.createElement("canvas");
+        const size = 200;
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) { reject(new Error("no canvas")); return; }
+        const minDim = Math.min(img.width, img.height);
+        const sx = (img.width - minDim) / 2;
+        const sy = (img.height - minDim) / 2;
+        ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      };
+      img.src = e.target!.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function PerfilPage() {
   const toast = useToast();
-  const router = useRouter();
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
   const [profile, setProfile] = useState<Profile>({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState("");
-  const [deletingAccount, setDeletingAccount] = useState(false);
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
-  // Password change
-  const [currentPassword, setCurrentPassword] = useState("");
+  // Security section (collapsible)
+  const [showSecurity, setShowSecurity] = useState(false);
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [changingPassword, setChangingPassword] = useState(false);
@@ -106,6 +121,35 @@ export default function PerfilPage() {
     }
   }
 
+  async function handleAvatarUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Solo se permiten imágenes");
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("La imagen no puede superar 5MB");
+      return;
+    }
+    setAvatarUploading(true);
+    try {
+      const dataUrl = await resizeImageToDataUrl(file);
+      const updatedProfile = { ...profile, avatar_url: dataUrl };
+      setProfile(updatedProfile);
+      await fetch("/api/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedProfile),
+      });
+      toast.success("Foto de perfil actualizada");
+    } catch {
+      toast.error("Error al subir la imagen");
+    } finally {
+      setAvatarUploading(false);
+    }
+  }
+
   async function handlePasswordChange() {
     setPasswordError("");
     if (newPassword !== confirmPassword) {
@@ -118,45 +162,36 @@ export default function PerfilPage() {
     }
     setChangingPassword(true);
     try {
+      const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
       const { error } = await supabase.auth.updateUser({ password: newPassword });
       if (error) {
         setPasswordError(error.message);
       } else {
         toast.success("Contraseña actualizada");
-        setCurrentPassword("");
         setNewPassword("");
         setConfirmPassword("");
+        setShowSecurity(false);
       }
     } finally {
       setChangingPassword(false);
     }
   }
 
-  async function handleDeleteAccount() {
-    setDeletingAccount(true);
-    try {
-      const supabase = createClient();
-      await supabase.auth.signOut();
-      router.push("/login");
-      toast.info("Cuenta eliminada");
-    } finally {
-      setDeletingAccount(false);
-      setShowDeleteModal(false);
-    }
-  }
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="w-6 h-6 rounded-full border-2 border-violet-500" style={{ borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }} />
+        <div
+          className="w-6 h-6 rounded-full border-2 border-violet-500"
+          style={{ borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }}
+        />
       </div>
     );
   }
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-8">
+      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
         <div>
           <h1 className="text-2xl font-bold" style={{ color: "#fff", fontFamily: "Syne, sans-serif" }}>
             Mi perfil
@@ -175,20 +210,56 @@ export default function PerfilPage() {
             Información personal
           </h2>
 
-          {/* Avatar */}
+          {/* Avatar with upload */}
           <div className="flex items-center gap-4">
-            <Avatar
-              src={profile.avatar_url}
-              name={profile.full_name}
-              size={64}
-            />
+            <div className="relative flex-shrink-0">
+              <div
+                className="cursor-pointer rounded-full"
+                onClick={() => !avatarUploading && avatarInputRef.current?.click()}
+                title="Cambiar foto de perfil"
+              >
+                <Avatar src={profile.avatar_url} name={profile.full_name} size={64} />
+                <div
+                  className="absolute inset-0 rounded-full flex items-center justify-center transition-opacity"
+                  style={{
+                    background: "rgba(0,0,0,0.55)",
+                    opacity: avatarUploading ? 1 : 0,
+                  }}
+                  onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.opacity = "1"; }}
+                  onMouseLeave={(e) => { if (!avatarUploading) (e.currentTarget as HTMLElement).style.opacity = "0"; }}
+                >
+                  {avatarUploading ? (
+                    <div
+                      className="w-4 h-4 rounded-full border-2"
+                      style={{ borderColor: "#fff", borderTopColor: "transparent", animation: "spin 0.8s linear infinite" }}
+                    />
+                  ) : (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                      <circle cx="12" cy="13" r="4" />
+                    </svg>
+                  )}
+                </div>
+              </div>
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="hidden"
+                onChange={handleAvatarUpload}
+              />
+            </div>
             <div>
               <p className="text-sm font-medium" style={{ color: "#fff" }}>
                 {profile.full_name ?? "Sin nombre"}
               </p>
-              <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
-                Avatar generado a partir de tus iniciales
-              </p>
+              <button
+                onClick={() => !avatarUploading && avatarInputRef.current?.click()}
+                className="text-xs mt-0.5 transition-colors"
+                style={{ color: "#A78BFA" }}
+              >
+                Cambiar foto
+              </button>
             </div>
           </div>
 
@@ -215,22 +286,16 @@ export default function PerfilPage() {
               </select>
             </div>
             <Input
-              label="País"
-              value={profile.country ?? ""}
-              onChange={(e) => setProfile((p) => ({ ...p, country: e.target.value }))}
-              placeholder="Argentina"
-            />
-            <Input
               label="Ciudad"
               value={profile.city ?? ""}
               onChange={(e) => setProfile((p) => ({ ...p, city: e.target.value }))}
-              placeholder="Buenos Aires"
+              placeholder="Posadas"
             />
             <Input
               label="Teléfono"
               value={profile.phone ?? ""}
               onChange={(e) => setProfile((p) => ({ ...p, phone: e.target.value }))}
-              placeholder="+54 11..."
+              placeholder="+54 376..."
               type="tel"
             />
           </div>
@@ -242,55 +307,58 @@ export default function PerfilPage() {
           </div>
         </section>
 
-        {/* ── SEGURIDAD ── */}
+        {/* ── SEGURIDAD (collapsible) ── */}
         <section
-          className="rounded-2xl p-6 space-y-4"
+          className="rounded-2xl overflow-hidden"
           style={{ background: "var(--surface-3)", border: "1px solid rgba(255,255,255,0.06)" }}
         >
-          <h2 className="text-base font-semibold" style={{ color: "#fff", fontFamily: "Syne, sans-serif" }}>
-            Seguridad
-          </h2>
-
-          <div className="space-y-3">
-            <Input
-              label="Nueva contraseña"
-              type="password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              placeholder="Mínimo 8 caracteres"
-              error={passwordError || undefined}
-            />
-            <Input
-              label="Confirmar contraseña"
-              type="password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              placeholder="Repetí la nueva contraseña"
-            />
-          </div>
-
-          <Button variant="secondary" loading={changingPassword} onClick={handlePasswordChange}>
-            Cambiar contraseña
-          </Button>
-
-          {/* Danger zone */}
-          <div
-            className="mt-6 p-4 rounded-xl"
-            style={{
-              background: "rgba(239,68,68,0.05)",
-              border: "1px solid rgba(239,68,68,0.2)",
-            }}
+          <button
+            onClick={() => setShowSecurity((v) => !v)}
+            className="w-full flex items-center justify-between p-6 transition-colors"
+            style={{ color: "#fff" }}
           >
-            <h3 className="text-sm font-semibold mb-2" style={{ color: "#F87171" }}>
-              Zona peligrosa
-            </h3>
-            <p className="text-xs mb-3" style={{ color: "var(--text-secondary)" }}>
-              Al eliminar tu cuenta se borrarán permanentemente todos tus datos y conversaciones.
-            </p>
-            <Button variant="danger" size="sm" onClick={() => setShowDeleteModal(true)}>
-              Eliminar mi cuenta
-            </Button>
-          </div>
+            <h2 className="text-base font-semibold" style={{ fontFamily: "Syne, sans-serif" }}>
+              Seguridad
+            </h2>
+            <svg
+              width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"
+              style={{
+                transform: showSecurity ? "rotate(180deg)" : "rotate(0deg)",
+                transition: "transform 0.2s ease",
+                color: "var(--text-secondary)",
+              }}
+            >
+              <polyline points="6 9 12 15 18 9" />
+            </svg>
+          </button>
+
+          {showSecurity && (
+            <div className="px-6 pb-6 space-y-4">
+              <p className="text-xs" style={{ color: "var(--text-secondary)" }}>
+                Cambiá tu contraseña de acceso. Debe tener al menos 8 caracteres.
+              </p>
+              <div className="space-y-3">
+                <Input
+                  label="Nueva contraseña"
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Mínimo 8 caracteres"
+                  error={passwordError || undefined}
+                />
+                <Input
+                  label="Confirmar contraseña"
+                  type="password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  placeholder="Repetí la nueva contraseña"
+                />
+              </div>
+              <Button variant="secondary" loading={changingPassword} onClick={handlePasswordChange}>
+                Cambiar contraseña
+              </Button>
+            </div>
+          )}
         </section>
 
         {/* ── PREFERENCIAS IA ── */}
@@ -322,7 +390,7 @@ export default function PerfilPage() {
                 Jurisdicción
               </label>
               <select
-                value={profile.jurisdiction ?? "Argentina"}
+                value={profile.jurisdiction ?? "Provincia de Misiones"}
                 onChange={(e) => setProfile((p) => ({ ...p, jurisdiction: e.target.value }))}
                 style={selectStyle}
               >
@@ -347,98 +415,13 @@ export default function PerfilPage() {
             </div>
           </div>
 
-          {/* Notifications toggle */}
-          <div className="flex items-center justify-between py-2">
-            <div>
-              <p className="text-sm font-medium" style={{ color: "#fff" }}>
-                Notificaciones por email
-              </p>
-              <p className="text-xs mt-0.5" style={{ color: "var(--text-secondary)" }}>
-                Recibí novedades y actualizaciones
-              </p>
-            </div>
-            <button
-              onClick={() => setProfile((p) => ({ ...p, email_notifications: !p.email_notifications }))}
-              className="relative w-11 h-6 rounded-full transition-all duration-200"
-              style={{
-                background: profile.email_notifications ? "#7C3AED" : "var(--surface-4)",
-              }}
-            >
-              <span
-                className="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-all duration-200"
-                style={{ transform: profile.email_notifications ? "translateX(20px)" : "translateX(0)" }}
-              />
-            </button>
-          </div>
-
           <div className="flex justify-end">
             <Button variant="primary" loading={saving} onClick={handleSave}>
               Guardar preferencias
             </Button>
           </div>
         </section>
-
-        {/* ── USO Y PLAN ── */}
-        <section
-          className="rounded-2xl p-6 space-y-4"
-          style={{ background: "var(--surface-3)", border: "1px solid rgba(255,255,255,0.06)" }}
-        >
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-semibold" style={{ color: "#fff", fontFamily: "Syne, sans-serif" }}>
-              Uso y plan
-            </h2>
-            <Badge variant="violet">Plan Gratuito</Badge>
-          </div>
-
-          <div className="grid grid-cols-3 gap-3">
-            {[
-              { label: "Consultas este mes", value: "—" },
-              { label: "Documentos", value: "—" },
-              { label: "Conversaciones", value: "—" },
-            ].map((stat) => (
-              <div
-                key={stat.label}
-                className="rounded-xl p-4 text-center"
-                style={{ background: "var(--surface-4)" }}
-              >
-                <p className="text-xl font-bold" style={{ color: "#A78BFA", fontFamily: "Syne, sans-serif" }}>
-                  {stat.value}
-                </p>
-                <p className="text-xs mt-1" style={{ color: "var(--text-secondary)" }}>
-                  {stat.label}
-                </p>
-              </div>
-            ))}
-          </div>
-
-          <Button variant="secondary" className="w-full" onClick={() => toast.info("Próximamente disponible")}>
-            Mejorar plan
-          </Button>
-        </section>
       </div>
-
-      {/* Delete account modal */}
-      <Modal
-        open={showDeleteModal}
-        onClose={() => { setShowDeleteModal(false); setDeleteConfirm(""); }}
-        title="Eliminar cuenta"
-        danger
-        confirmLabel="Eliminar permanentemente"
-        onConfirm={handleDeleteAccount}
-        confirmLoading={deletingAccount}
-      >
-        <div className="space-y-3">
-          <p className="text-sm" style={{ color: "var(--text-secondary)" }}>
-            Esta acción es <strong style={{ color: "#F87171" }}>irreversible</strong>. Se eliminarán todos tus datos, conversaciones y documentos.
-          </p>
-          <Input
-            label='Escribí "ELIMINAR" para confirmar'
-            value={deleteConfirm}
-            onChange={(e) => setDeleteConfirm(e.target.value)}
-            placeholder="ELIMINAR"
-          />
-        </div>
-      </Modal>
     </div>
   );
 }

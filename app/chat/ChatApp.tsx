@@ -24,13 +24,14 @@ interface Message {
   content: string | ContentBlock[];
   timestamp: Date;
   attachments?: { name: string; kind: "image" | "doc" }[];
+  // Stores only the user-typed prompt for display (not extracted file text)
+  displayText?: string;
 }
 
 interface PendingFile {
   id: string;
   file: File;
   kind: "image" | "doc";
-  preview?: string; // base64 data URI for images
 }
 
 interface ChatAppProps {
@@ -88,12 +89,16 @@ function TypingDots() {
 
 function ChatMessageItem({ message, isStreaming }: { message: Message; isStreaming?: boolean }) {
   const isUser = message.role === "user";
-  const displayText = getDisplayText(message.content);
+
+  // For user messages: prefer displayText (typed prompt) over extracted content
+  const bubbleText = isUser
+    ? (message.displayText !== undefined ? message.displayText : getDisplayText(message.content))
+    : getDisplayText(message.content);
 
   if (isUser) {
     return (
-      <div className="animate-fade-in flex justify-end mb-6 px-4">
-        <div style={{ maxWidth: "70%" }}>
+      <div className="animate-fade-in flex justify-end mb-4 px-3 sm:px-4">
+        <div style={{ maxWidth: "85%" }}>
           {/* Attachment chips */}
           {message.attachments && message.attachments.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-2 justify-end">
@@ -108,21 +113,23 @@ function ChatMessageItem({ message, isStreaming }: { message: Message; isStreami
                   }}
                 >
                   <span>{getFileIcon(a.name)}</span>
-                  <span className="truncate max-w-[140px]">{a.name}</span>
+                  <span className="truncate" style={{ maxWidth: "120px" }}>{a.name}</span>
                 </span>
               ))}
             </div>
           )}
-          <div
-            className="px-4 py-3 text-sm leading-relaxed"
-            style={{
-              background: "#7C3AED",
-              color: "#fff",
-              borderRadius: "16px 16px 4px 16px",
-            }}
-          >
-            {displayText || (message.attachments?.length ? "Analizá este archivo" : "")}
-          </div>
+          {(bubbleText || (!message.attachments?.length)) && (
+            <div
+              className="px-4 py-3 text-sm leading-relaxed"
+              style={{
+                background: "#7C3AED",
+                color: "#fff",
+                borderRadius: "16px 16px 4px 16px",
+              }}
+            >
+              {bubbleText || "Analizá este archivo"}
+            </div>
+          )}
           <div className="mt-1 text-right">
             <span style={{ color: "var(--text-secondary)", fontSize: "0.62rem" }}>
               {format(message.timestamp, "HH:mm", { locale: es })}
@@ -133,11 +140,11 @@ function ChatMessageItem({ message, isStreaming }: { message: Message; isStreami
     );
   }
 
-  // AI message — no background, no bubble, full width
+  // AI message — no background, full width
   return (
-    <div className="animate-fade-in w-full mb-6">
+    <div className="animate-fade-in w-full mb-4">
       <div
-        className="w-full py-5 px-4"
+        className="w-full py-5 px-3 sm:px-4"
         style={{ borderTop: "1px solid rgba(255,255,255,0.04)" }}
       >
         <div className="max-w-3xl mx-auto">
@@ -151,12 +158,12 @@ function ChatMessageItem({ message, isStreaming }: { message: Message; isStreami
             >
               <span style={{ fontSize: "10px" }}>⚖</span>
             </div>
-            <div className="flex-1 min-w-0">
-              {isStreaming && !displayText ? (
+            <div className="flex-1 min-w-0 overflow-hidden">
+              {isStreaming && !bubbleText ? (
                 <TypingDots />
               ) : (
                 <div className="prose-dark">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{displayText}</ReactMarkdown>
+                  <ReactMarkdown remarkPlugins={[remarkGfm]}>{bubbleText}</ReactMarkdown>
                   {isStreaming && (
                     <span
                       className="inline-block w-0.5 h-4 ml-0.5 align-middle"
@@ -165,7 +172,7 @@ function ChatMessageItem({ message, isStreaming }: { message: Message; isStreami
                   )}
                 </div>
               )}
-              {!isStreaming && displayText && (
+              {!isStreaming && bubbleText && (
                 <span style={{ color: "var(--text-secondary)", fontSize: "0.62rem", marginTop: "8px", display: "block" }}>
                   {format(message.timestamp, "HH:mm", { locale: es })}
                 </span>
@@ -198,7 +205,7 @@ function InputBar({ value, onChange, onSubmit, isLoading, pendingFiles, onRemove
     const ta = textareaRef.current;
     if (ta) {
       ta.style.height = "auto";
-      ta.style.height = Math.min(ta.scrollHeight, 130) + "px";
+      ta.style.height = Math.min(ta.scrollHeight, 120) + "px";
     }
   }, [value]);
 
@@ -212,7 +219,7 @@ function InputBar({ value, onChange, onSubmit, isLoading, pendingFiles, onRemove
   const canSend = !isLoading && (value.trim().length > 0 || pendingFiles.length > 0);
 
   return (
-    <div className="flex-shrink-0 px-4 pb-6 pt-2" style={{ background: "var(--surface-1)" }}>
+    <div className="flex-shrink-0 px-3 sm:px-4 pb-4 sm:pb-6 pt-2" style={{ background: "var(--surface-1)" }}>
       <div className="max-w-3xl mx-auto">
         {/* File chips row */}
         {pendingFiles.length > 0 && (
@@ -225,7 +232,7 @@ function InputBar({ value, onChange, onSubmit, isLoading, pendingFiles, onRemove
                   background: "rgba(124,58,237,0.1)",
                   border: "1px solid rgba(124,58,237,0.25)",
                   color: "#A78BFA",
-                  maxWidth: "200px",
+                  maxWidth: "180px",
                 }}
               >
                 <span>{getFileIcon(pf.file.name)}</span>
@@ -246,7 +253,7 @@ function InputBar({ value, onChange, onSubmit, isLoading, pendingFiles, onRemove
 
         {/* Textarea + buttons */}
         <div
-          className="flex items-end gap-2 rounded-2xl px-4 py-3 transition-all duration-200"
+          className="flex items-end gap-2 rounded-2xl px-3 sm:px-4 py-3 transition-all duration-200"
           style={{
             background: "var(--surface-3)",
             border: "1px solid",
@@ -254,7 +261,6 @@ function InputBar({ value, onChange, onSubmit, isLoading, pendingFiles, onRemove
             boxShadow: canSend ? "0 0 20px rgba(124,58,237,0.08)" : "none",
           }}
         >
-          {/* Attach button */}
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
@@ -276,7 +282,7 @@ function InputBar({ value, onChange, onSubmit, isLoading, pendingFiles, onRemove
             rows={1}
             disabled={isLoading}
             className="flex-1 resize-none bg-transparent text-sm outline-none"
-            style={{ color: "#fff", maxHeight: "130px", lineHeight: "1.5" }}
+            style={{ color: "#fff", maxHeight: "120px", lineHeight: "1.5" }}
           />
 
           <button
@@ -305,11 +311,10 @@ function InputBar({ value, onChange, onSubmit, isLoading, pendingFiles, onRemove
           </button>
         </div>
 
-        <p className="text-center mt-2" style={{ color: "#1a1a1a", fontSize: "0.6rem" }}>
-          LexIA · Powered by Claude · Viva la Libertad
+        <p className="text-center mt-2" style={{ color: "#222", fontSize: "0.6rem" }}>
+          LexIA · LLA Misiones · Viva la Libertad
         </p>
 
-        {/* Single hidden file input for all types */}
         <input
           ref={fileInputRef}
           type="file"
@@ -336,10 +341,23 @@ export default function ChatApp({ userEmail, userProfile }: ChatAppProps) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Auto-scroll only when message count changes (new message added), not during streaming
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [messages.length]);
+
+  // On mount, check if historial asked us to load a specific conversation
+  useEffect(() => {
+    const convId = typeof window !== "undefined" ? localStorage.getItem("__loadConvId") : null;
+    if (convId) {
+      localStorage.removeItem("__loadConvId");
+      loadConversation(convId);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   async function loadConversation(id: string) {
     setConversationId(id);
@@ -363,7 +381,6 @@ export default function ChatApp({ userEmail, userProfile }: ChatAppProps) {
     setPendingFiles([]);
   }
 
-  // Validate and add files
   function handleAddFiles(fileList: FileList) {
     const toAdd: PendingFile[] = [];
     Array.from(fileList).forEach((file) => {
@@ -388,7 +405,6 @@ export default function ChatApp({ userEmail, userProfile }: ChatAppProps) {
     setPendingFiles((prev) => prev.filter((f) => f.id !== id));
   }
 
-  // Build Claude content array from pending files + text
   async function buildContentBlocks(text: string, files: PendingFile[]): Promise<ContentBlock[]> {
     const blocks: ContentBlock[] = [];
 
@@ -406,14 +422,13 @@ export default function ChatApp({ userEmail, userProfile }: ChatAppProps) {
         blocks.push({ type: "image", source: { type: "base64", media_type: mt, data: base64 } });
         blocks.push({ type: "text", text: `[Imagen adjunta: ${pf.file.name}]` });
       } else {
-        // Text-based: some can be read directly in browser, others need server
         const ext = pf.file.name.split(".").pop()?.toLowerCase() ?? "";
         const textExts = ["txt","md","rtf","json","js","ts","py","html","css"];
         if (textExts.includes(ext)) {
-          const text = await pf.file.text();
-          blocks.push({ type: "text", text: `[Archivo: ${pf.file.name}]\n\n${text.slice(0, 100_000)}` });
+          const fileText = await pf.file.text();
+          blocks.push({ type: "text", text: `[Archivo: ${pf.file.name}]\n\n${fileText.slice(0, 100_000)}` });
         } else {
-          // PDF, DOCX, XLSX, PPT → server
+          // PDF, DOCX, XLSX, PPT → server-side extraction
           const form = new FormData();
           form.append("file", pf.file);
           const res = await fetch("/api/process-file", { method: "POST", body: form });
@@ -421,6 +436,7 @@ export default function ChatApp({ userEmail, userProfile }: ChatAppProps) {
             const { text: extracted } = await res.json();
             blocks.push({ type: "text", text: `[Archivo: ${pf.file.name}]\n\n${extracted}` });
           } else {
+            toast.error(`No se pudo leer el archivo "${pf.file.name}"`);
             blocks.push({ type: "text", text: `[Archivo: ${pf.file.name} — no se pudo extraer el contenido]` });
           }
         }
@@ -440,7 +456,6 @@ export default function ChatApp({ userEmail, userProfile }: ChatAppProps) {
 
       let activeConvId = conversationId;
 
-      // Create conversation on first message
       if (!activeConvId) {
         const title = (text || pendingFiles[0]?.file.name || "Nueva consulta").slice(0, 60);
         const res = await fetch("/api/conversations", {
@@ -455,9 +470,8 @@ export default function ChatApp({ userEmail, userProfile }: ChatAppProps) {
         }
       }
 
-      // Build content blocks (may call server for PDF/DOCX/XLSX)
-      let userContent: string | ContentBlock[];
       const attachmentMeta = pendingFiles.map((f) => ({ name: f.file.name, kind: f.kind }));
+      let userContent: string | ContentBlock[];
 
       if (pendingFiles.length > 0) {
         userContent = await buildContentBlocks(text, pendingFiles);
@@ -465,7 +479,7 @@ export default function ChatApp({ userEmail, userProfile }: ChatAppProps) {
         userContent = text.trim();
       }
 
-      // Save user message to DB (text only)
+      // Save user message to DB (just the typed text, not extracted content)
       const savedText = text.trim() || attachmentMeta.map((a) => `[${a.name}]`).join(" ");
       if (activeConvId) {
         await fetch(`/api/conversations/${activeConvId}/messages`, {
@@ -480,6 +494,7 @@ export default function ChatApp({ userEmail, userProfile }: ChatAppProps) {
         content: userContent,
         timestamp: new Date(),
         attachments: attachmentMeta.length > 0 ? attachmentMeta : undefined,
+        displayText: text.trim(), // Only show the typed prompt in the UI bubble
       };
 
       const updatedMessages = [...messages, userMsg];
@@ -528,7 +543,7 @@ export default function ChatApp({ userEmail, userProfile }: ChatAppProps) {
                       return next;
                     });
                   }
-                } catch { /* skip */ }
+                } catch { /* skip malformed SSE */ }
               }
             }
           }
@@ -551,7 +566,7 @@ export default function ChatApp({ userEmail, userProfile }: ChatAppProps) {
     [input, messages, isLoading, conversationId, pendingFiles, userProfile]
   );
 
-  // Expose loadConversation and handleNewChat for parent (ShellLayout/Sidebar)
+  // Expose helpers for parent shell (sidebar new chat button, etc.)
   useEffect(() => {
     (window as unknown as Record<string, unknown>).__chatLoadConversation = loadConversation;
     (window as unknown as Record<string, unknown>).__chatNewChat = handleNewChat;
@@ -559,32 +574,32 @@ export default function ChatApp({ userEmail, userProfile }: ChatAppProps) {
 
   return (
     <div className="flex flex-col h-full" style={{ background: "var(--surface-1)" }}>
-      {/* Messages */}
-      <main className="flex-1 overflow-y-auto">
+      {/* Messages scroll area */}
+      <main ref={scrollContainerRef} className="flex-1 overflow-y-auto">
         {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center min-h-full pb-8 px-4">
-            <div className="text-center mb-10">
+          <div className="flex flex-col items-center justify-center min-h-full pb-4 px-4">
+            <div className="text-center mb-8 w-full max-w-sm mx-auto">
               <div
-                className="w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-6"
+                className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl flex items-center justify-center mx-auto mb-5"
                 style={{
                   background: "linear-gradient(135deg, #7C3AED 0%, #4C1D95 100%)",
                   boxShadow: "0 0 32px rgba(124,58,237,0.3)",
                 }}
               >
-                <span style={{ fontSize: "32px" }}>⚖</span>
+                <span style={{ fontSize: "28px" }}>⚖</span>
               </div>
               <h2
-                className="text-2xl font-semibold mb-2"
+                className="text-xl sm:text-2xl font-semibold mb-2"
                 style={{ color: "#fff", fontFamily: "Syne, sans-serif" }}
               >
-                Asesor Jurídico LLA
+                Asesor Jurídico LLA Misiones
               </h2>
-              <p className="text-sm max-w-sm mx-auto leading-relaxed" style={{ color: "var(--text-secondary)" }}>
-                Asesoramiento jurídico y político desde los principios de{" "}
-                <span style={{ color: "#7C3AED" }}>La Libertad Avanza</span>.
+              <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
+                Asesoramiento jurídico-legislativo para los representantes de{" "}
+                <span style={{ color: "#7C3AED" }}>La Libertad Avanza Misiones</span>.
               </p>
-              <div className="flex items-center justify-center gap-3 mt-5 flex-wrap">
-                {["Derecho Const.", "Política Pública", "Legislación"].map((tag) => (
+              <div className="flex items-center justify-center gap-2 mt-4 flex-wrap">
+                {["Proyectos de Ley", "Votaciones", "Legislación Provincial"].map((tag) => (
                   <span
                     key={tag}
                     className="text-xs px-2.5 py-1 rounded-lg"
@@ -602,7 +617,7 @@ export default function ChatApp({ userEmail, userProfile }: ChatAppProps) {
             <SuggestedQuestions onSelect={(q) => sendMessage(q)} />
           </div>
         ) : (
-          <div className="py-4">
+          <div className="py-2">
             {messages.map((msg, i) => (
               <ChatMessageItem key={i} message={msg} isStreaming={i === streamingIndex} />
             ))}
