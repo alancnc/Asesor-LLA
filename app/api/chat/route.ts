@@ -1,9 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { createClient } from "@/lib/supabase/server";
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
 const SYSTEM_PROMPT = `Eres el Asesor Jurídico y Político oficial de La Libertad Avanza (LLA), el movimiento liberal-libertario liderado por Javier Milei en Argentina.
 
@@ -45,7 +44,14 @@ Recuerda: representas los valores de La Libertad Avanza. Viva la libertad, caraj
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = await req.json();
+    const supabase = await createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const { messages, conversationId } = await req.json();
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json(
@@ -64,7 +70,9 @@ export async function POST(req: NextRequest) {
       })),
     });
 
+    let fullText = "";
     const encoder = new TextEncoder();
+
     const readable = new ReadableStream({
       async start(controller) {
         for await (const chunk of stream) {
@@ -72,10 +80,26 @@ export async function POST(req: NextRequest) {
             chunk.type === "content_block_delta" &&
             chunk.delta.type === "text_delta"
           ) {
+            fullText += chunk.delta.text;
             const data = JSON.stringify({ text: chunk.delta.text });
             controller.enqueue(encoder.encode(`data: ${data}\n\n`));
           }
         }
+
+        // Save assistant response to DB once streaming is done
+        if (conversationId && fullText) {
+          await supabase.from("messages").insert({
+            conversation_id: conversationId,
+            role: "assistant",
+            content: fullText,
+          });
+          // Update conversation timestamp
+          await supabase
+            .from("conversations")
+            .update({ updated_at: new Date().toISOString() })
+            .eq("id", conversationId);
+        }
+
         controller.enqueue(encoder.encode("data: [DONE]\n\n"));
         controller.close();
       },
@@ -90,9 +114,6 @@ export async function POST(req: NextRequest) {
     });
   } catch (error) {
     console.error("Chat API error:", error);
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
   }
 }
