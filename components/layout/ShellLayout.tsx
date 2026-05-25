@@ -4,13 +4,15 @@ import { useState, useEffect } from "react";
 import Sidebar from "./Sidebar";
 import TopBar from "./TopBar";
 import BottomNav from "./BottomNav";
+import { AvatarProvider } from "@/contexts/AvatarContext";
 
 interface ShellLayoutProps {
   children: React.ReactNode;
   user: { email?: string; full_name?: string } | null;
+  avatarUrl?: string | null;
 }
 
-export default function ShellLayout({ children, user }: ShellLayoutProps) {
+export default function ShellLayout({ children, user, avatarUrl }: ShellLayoutProps) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [windowWidth, setWindowWidth] = useState(1024);
@@ -44,6 +46,7 @@ export default function ShellLayout({ children, user }: ShellLayoutProps) {
   }
 
   return (
+    <AvatarProvider initialUrl={avatarUrl}>
     <div className="flex h-screen overflow-hidden" style={{ background: "var(--surface-1)" }}>
       {/* Desktop/Tablet Sidebar */}
       {!isMobile && (
@@ -84,5 +87,6 @@ export default function ShellLayout({ children, user }: ShellLayoutProps) {
         <BottomNav onMenuToggle={() => setMobileSidebarOpen((v) => !v)} />
       )}
     </div>
+    </AvatarProvider>
   );
 }

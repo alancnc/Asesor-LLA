@@ -312,7 +312,7 @@ function InputBar({ value, onChange, onSubmit, isLoading, pendingFiles, onRemove
         </div>
 
         <p className="text-center mt-2" style={{ color: "#222", fontSize: "0.6rem" }}>
-          LexIA · LLA Misiones · Viva la Libertad
+          Viva la Libertad
         </p>
 
         <input
@@ -592,7 +592,7 @@ export default function ChatApp({ userEmail, userProfile }: ChatAppProps) {
                 className="text-xl sm:text-2xl font-semibold mb-2"
                 style={{ color: "#fff", fontFamily: "Syne, sans-serif" }}
               >
-                Asesor Jurídico LLA Misiones
+                Asesor LLA Misiones
               </h2>
               <p className="text-sm leading-relaxed" style={{ color: "var(--text-secondary)" }}>
                 Asesoramiento jurídico-legislativo para los representantes de{" "}

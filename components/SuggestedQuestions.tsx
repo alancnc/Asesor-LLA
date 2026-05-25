@@ -1,51 +1,56 @@
 "use client";
 
-const SUGGESTIONS = [
-  "¿Es constitucional la ley de financiamiento universitario?",
-  "¿Qué dice la Constitución sobre el Banco Central?",
-  "¿Cómo se implementaría la dolarización legalmente?",
-  "¿Qué ministerios puede eliminar el Ejecutivo por decreto?",
-  "Analizá el proyecto de ley de reforma laboral",
-  "¿Cuáles son los límites constitucionales del DNU?",
+const DEFAULT_SUGGESTIONS = [
+  "¿Es constitucional una ley aprobada sin quórum?",
+  "¿Cuál es el procedimiento para declarar de interés provincial un proyecto?",
+  "¿Qué diferencia hay entre una declaración y una resolución legislativa?",
+  "Analizá este proyecto de ley y recomendá cómo votar",
+  "¿Cuáles son los límites constitucionales del Ejecutivo provincial?",
+  "¿Cómo se interpela a un ministro provincial en Misiones?",
 ];
 
-export default function SuggestedQuestions({
-  onSelect,
-}: {
+interface SuggestedQuestionsProps {
   onSelect: (q: string) => void;
-}) {
+  questions?: string[];
+}
+
+export default function SuggestedQuestions({ onSelect, questions }: SuggestedQuestionsProps) {
+  const items = questions ?? DEFAULT_SUGGESTIONS;
+
   return (
     <div className="w-full max-w-2xl mx-auto px-4 mb-6">
       <p
-        className="text-xs text-center mb-3 tracking-widest uppercase"
-        style={{ color: "#444444", letterSpacing: "0.15em" }}
+        className="text-xs text-center mb-4 uppercase tracking-widest"
+        style={{ color: "var(--text-secondary)", letterSpacing: "0.15em", fontFamily: "DM Sans, sans-serif" }}
       >
         Consultas frecuentes
       </p>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        {SUGGESTIONS.map((q, i) => (
+        {items.map((q, i) => (
           <button
             key={i}
             onClick={() => onSelect(q)}
-            className="text-left px-3 py-2.5 rounded-lg text-xs transition-all duration-200 cursor-pointer"
+            className="text-left rounded-xl cursor-pointer transition-all duration-200"
             style={{
-              background: "#0a0a0a",
-              border: "1px solid #1a1a1a",
-              color: "#888888",
+              padding: "12px 16px",
+              background: "rgba(124,58,237,0.04)",
+              border: "1px solid rgba(124,58,237,0.2)",
+              color: "var(--text-secondary)",
+              fontSize: "0.8rem",
+              lineHeight: "1.5",
+              fontFamily: "DM Sans, sans-serif",
             }}
             onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                "rgba(124, 58, 237, 0.4)";
-              (e.currentTarget as HTMLButtonElement).style.color = "#c4b5fd";
-              (e.currentTarget as HTMLButtonElement).style.background =
-                "rgba(124, 58, 237, 0.05)";
+              const el = e.currentTarget;
+              el.style.background = "rgba(124,58,237,0.1)";
+              el.style.borderColor = "rgba(124,58,237,0.5)";
+              el.style.color = "#c4b5fd";
             }}
             onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.borderColor =
-                "#1a1a1a";
-              (e.currentTarget as HTMLButtonElement).style.color = "#888888";
-              (e.currentTarget as HTMLButtonElement).style.background =
-                "#0a0a0a";
+              const el = e.currentTarget;
+              el.style.background = "rgba(124,58,237,0.04)";
+              el.style.borderColor = "rgba(124,58,237,0.2)";
+              el.style.color = "var(--text-secondary)";
             }}
           >
             {q}

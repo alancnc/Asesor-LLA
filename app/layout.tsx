@@ -3,9 +3,9 @@ import "./globals.css";
 import { ToastProvider } from "@/components/ui/Toast";
 
 export const metadata: Metadata = {
-  title: "Asesor LLA — Asesor Jurídico & Político",
+  title: "Asesor LLA",
   description:
-    "Asesor jurídico y político oficial de La Libertad Avanza. Consultas constitucionales, legislativas y de política pública desde una perspectiva liberal.",
+    "Asesoramiento jurídico-legislativo oficial de La Libertad Avanza Misiones.",
   icons: {
     icon: "/favicon.ico",
   },

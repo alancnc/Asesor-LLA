@@ -3,6 +3,8 @@
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { useAvatar } from "@/contexts/AvatarContext";
+import Avatar from "@/components/ui/Avatar";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -44,15 +46,12 @@ const navItems = [
 export default function Sidebar({ collapsed, user }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { avatarUrl } = useAvatar();
 
   const isActive = (href: string) => {
     if (href === "/chat") return pathname === "/chat";
     return pathname.startsWith(href);
   };
-
-  const initials = user?.full_name
-    ? user.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
-    : user?.email?.slice(0, 2).toUpperCase() ?? "??";
 
   async function handleLogout() {
     const supabase = createClient();
@@ -93,10 +92,7 @@ export default function Sidebar({ collapsed, user }: SidebarProps) {
             >
               ASESOR LLA
             </span>
-            <p className="text-xs" style={{ color: "var(--text-secondary)", marginTop: "1px" }}>
-              LexIA · Asesor Jurídico
-            </p>
-          </div>
+            </div>
         )}
       </div>
 
@@ -109,7 +105,7 @@ export default function Sidebar({ collapsed, user }: SidebarProps) {
               <Link
                 key={item.href}
                 href={item.href}
-                className="flex items-center gap-3 rounded-xl transition-all duration-150"
+                className={`flex items-center gap-3 rounded-xl transition-all duration-200${active ? "" : " v-hover"}`}
                 style={{
                   padding: collapsed ? "10px 0" : "10px 12px",
                   justifyContent: collapsed ? "center" : "flex-start",
@@ -121,7 +117,7 @@ export default function Sidebar({ collapsed, user }: SidebarProps) {
               >
                 <span style={{ flexShrink: 0 }}>{item.icon}</span>
                 {!collapsed && (
-                  <span className="text-sm font-medium">{item.label}</span>
+                  <span className="text-sm" style={{ fontFamily: "DM Sans, sans-serif", fontWeight: active ? 500 : 400 }}>{item.label}</span>
                 )}
               </Link>
             );
@@ -136,16 +132,11 @@ export default function Sidebar({ collapsed, user }: SidebarProps) {
       >
         {collapsed ? (
           <div className="flex flex-col items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-              style={{ background: "linear-gradient(135deg, #7C3AED, #4C1D95)", color: "#fff" }}
-            >
-              {initials}
-            </div>
+            <Avatar src={avatarUrl} name={user?.full_name} email={user?.email} size={32} />
             <button
               onClick={handleLogout}
               title="Cerrar sesión"
-              className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+              className="w-8 h-8 rounded-lg flex items-center justify-center v-hover"
               style={{ color: "var(--text-secondary)" }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -157,26 +148,21 @@ export default function Sidebar({ collapsed, user }: SidebarProps) {
           </div>
         ) : (
           <div className="flex items-center gap-2">
-            <div
-              className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0"
-              style={{ background: "linear-gradient(135deg, #7C3AED, #4C1D95)", color: "#fff" }}
-            >
-              {initials}
-            </div>
+            <Avatar src={avatarUrl} name={user?.full_name} email={user?.email} size={32} />
             <div className="flex-1 min-w-0">
               {user?.full_name && (
-                <p className="text-xs font-medium truncate" style={{ color: "#fff" }}>
+                <p className="truncate" style={{ color: "#fff", fontSize: "0.8rem", fontFamily: "DM Sans, sans-serif", fontWeight: 500 }}>
                   {user.full_name}
                 </p>
               )}
-              <p className="text-xs truncate" style={{ color: "var(--text-secondary)", fontSize: "0.7rem" }}>
+              <p className="truncate" style={{ color: "var(--text-secondary)", fontSize: "0.7rem", fontFamily: "DM Sans, sans-serif" }}>
                 {user?.email ?? ""}
               </p>
             </div>
             <button
               onClick={handleLogout}
               title="Cerrar sesión"
-              className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-all"
+              className="flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center v-hover"
               style={{ color: "var(--text-secondary)", border: "1px solid rgba(255,255,255,0.06)" }}
             >
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">

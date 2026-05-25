@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Avatar from "@/components/ui/Avatar";
 import { useToast } from "@/components/ui/Toast";
+import { useAvatar } from "@/contexts/AvatarContext";
 
 interface Profile {
   id?: string;
@@ -83,6 +84,7 @@ async function resizeImageToDataUrl(file: File): Promise<string> {
 export default function PerfilPage() {
   const toast = useToast();
   const avatarInputRef = useRef<HTMLInputElement>(null);
+  const { setAvatarUrl: setGlobalAvatar } = useAvatar();
 
   const [profile, setProfile] = useState<Profile>({});
   const [loading, setLoading] = useState(true);
@@ -137,6 +139,7 @@ export default function PerfilPage() {
       const dataUrl = await resizeImageToDataUrl(file);
       const updatedProfile = { ...profile, avatar_url: dataUrl };
       setProfile(updatedProfile);
+      setGlobalAvatar(dataUrl); // sync across all components instantly
       await fetch("/api/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },

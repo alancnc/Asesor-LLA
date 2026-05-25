@@ -31,7 +31,7 @@ export default async function proxy(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
   const isAuthPage = pathname === "/login" || pathname === "/register";
-  const isProtected = pathname.startsWith("/chat");
+  const isProtected = pathname.startsWith("/chat") || pathname.startsWith("/admin");
 
   if (isProtected && !user) {
     return NextResponse.redirect(new URL("/login", request.url));
@@ -45,5 +45,5 @@ export default async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/chat/:path*", "/login", "/register"],
+  matcher: ["/chat/:path*", "/admin/:path*", "/admin", "/login", "/register"],
 };

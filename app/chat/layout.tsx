@@ -12,19 +12,16 @@ export default async function ChatLayout({
 
   if (!user) redirect("/login");
 
-  // Fetch profile for name
   const { data: profile } = await supabase
     .from("profiles")
-    .select("full_name")
+    .select("full_name, avatar_url")
     .eq("id", user.id)
     .single();
 
   return (
     <ShellLayout
-      user={{
-        email: user.email ?? "",
-        full_name: profile?.full_name ?? "",
-      }}
+      user={{ email: user.email ?? "", full_name: profile?.full_name ?? "" }}
+      avatarUrl={profile?.avatar_url ?? null}
     >
       {children}
     </ShellLayout>

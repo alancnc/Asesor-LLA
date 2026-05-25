@@ -1,6 +1,8 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import { useAvatar } from "@/contexts/AvatarContext";
+import Avatar from "@/components/ui/Avatar";
 
 interface TopBarProps {
   onMenuToggle: () => void;
@@ -8,19 +10,15 @@ interface TopBarProps {
 }
 
 const routeTitles: Record<string, string> = {
-  "/chat": "LexIA — Asesor Jurídico",
-  "/chat/historial": "Historial de consultas",
+  "/chat/historial": "Historial",
   "/chat/documentos": "Documentos",
   "/chat/perfil": "Mi perfil",
 };
 
 export default function TopBar({ onMenuToggle, user }: TopBarProps) {
   const pathname = usePathname();
-  const title = routeTitles[pathname] ?? "LexIA — Asesor Jurídico";
-
-  const initials = user?.full_name
-    ? user.full_name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
-    : user?.email?.slice(0, 2).toUpperCase() ?? "??";
+  const title = routeTitles[pathname] ?? "";
+  const { avatarUrl } = useAvatar();
 
   return (
     <header
@@ -32,10 +30,10 @@ export default function TopBar({ onMenuToggle, user }: TopBarProps) {
         borderBottom: "1px solid rgba(124,58,237,0.1)",
       }}
     >
-      {/* Left: hamburger (mobile) + title */}
+      {/* Left: hamburger + title */}
       <div className="flex items-center gap-3">
         <button
-          className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg transition-all"
+          className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg v-hover"
           style={{ color: "var(--text-secondary)" }}
           onClick={onMenuToggle}
           aria-label="Toggle sidebar"
@@ -46,18 +44,17 @@ export default function TopBar({ onMenuToggle, user }: TopBarProps) {
             <line x1="3" y1="18" x2="21" y2="18" />
           </svg>
         </button>
-        <h1
-          className="text-sm font-semibold"
-          style={{ color: "#fff", fontFamily: "Syne, sans-serif" }}
-        >
-          {title}
-        </h1>
+        {title && (
+          <h1 className="text-sm font-semibold" style={{ color: "#fff", fontFamily: "Syne, sans-serif" }}>
+            {title}
+          </h1>
+        )}
       </div>
 
-      {/* Right: notifications + avatar */}
+      {/* Right: avatar */}
       <div className="flex items-center gap-2">
         <button
-          className="w-8 h-8 rounded-lg flex items-center justify-center transition-all"
+          className="w-8 h-8 rounded-lg flex items-center justify-center v-hover"
           style={{ color: "var(--text-secondary)" }}
           aria-label="Notificaciones"
         >
@@ -66,13 +63,12 @@ export default function TopBar({ onMenuToggle, user }: TopBarProps) {
             <path d="M13.73 21a2 2 0 0 1-3.46 0" />
           </svg>
         </button>
-        <div
-          className="w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold"
-          style={{ background: "linear-gradient(135deg, #7C3AED, #4C1D95)", color: "#fff" }}
-          title={user?.email}
-        >
-          {initials}
-        </div>
+        <Avatar
+          src={avatarUrl}
+          name={user?.full_name}
+          email={user?.email}
+          size={32}
+        />
       </div>
     </header>
   );
